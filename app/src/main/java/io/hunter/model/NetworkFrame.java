@@ -1,6 +1,9 @@
 package io.hunter.model;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+
+import com.google.common.base.Charsets;
 
 public class NetworkFrame {
 
@@ -14,6 +17,8 @@ public class NetworkFrame {
 
     private byte control;
 
+    private byte crc;
+
     private byte size;
 
     private byte[] meat;
@@ -26,9 +31,13 @@ public class NetworkFrame {
         this.control = control;
         this.size = size;
 
+        meat = new byte[size];
+
         for(int i = 0; i < message.length ; i++) {
             meat[i] = message[i];
         }
+
+        this.crc = genCRC();
     }
 
     public NetworkFrame(byte src, byte networkSrc, byte dest, byte networkDest, byte control, String message) {
@@ -48,6 +57,8 @@ public class NetworkFrame {
         for (int i = 0; i < size; i++) {
             this.meat[i] = totalFrame[6+i];
         }
+
+        this.crc = genCRC();
     }
 
     public byte getSrc() {
@@ -78,6 +89,10 @@ public class NetworkFrame {
         return meat;
     }
 
+    public String getMessage() {
+        return new String(meat, Charsets.US_ASCII);
+    }
+
     public byte[] generateFrame() {
         byte[] totalFrame = new byte[5+size];
         totalFrame[0] = src;
@@ -94,4 +109,31 @@ public class NetworkFrame {
         return totalFrame;
     }
 
+    private byte genCRC() {
+        byte sum = 0;
+        for(int i = 0; i < size; i++) {
+            sum += meat[i];
+        }
+
+        sum += src;
+        sum += networkSrc;
+        sum += dest;
+        sum += networkDest;
+        sum += control;
+        sum += size;
+
+        return sum;
+    }
+
+    public boolean checkCRC() {
+        byte calculated = genCRC();
+        if (calculated != crc) {
+            return false;
+        }
+        return true;
+    }
+
+    public void debugFrame() {
+        System.out.println("[Frame Debug] Source:" + src + ", Network Source:" + networkSrc + ", Destination:" + dest + ", Network Destination:" + networkDest + ", CRC:" + crc + ", Size:" + size + "\n\tMessage:" + getMessage());
+    }
 }

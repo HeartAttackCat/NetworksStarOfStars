@@ -21,6 +21,7 @@ public class NodeConfig {
     private Queue<NetworkFrame> frames = new LinkedList<NetworkFrame>();
 
     public NodeConfig(byte name, byte network) {
+        //TODO please update this before submission.
         fileName = "arm" + network + "/Node" + name + ".txt";
         this.network = network;
         this.name = name;
@@ -32,8 +33,16 @@ public class NodeConfig {
             FileReader fileReader = new FileReader(configFile);
             Scanner fileLine = new Scanner(fileReader);
             while(fileLine.hasNext()) {
-                Scanner scanner = new Scanner(fileLine.nextLine());
-                scanner.delimiter(":");
+                Scanner major = new Scanner(fileLine.nextLine());
+                major.useDelimiter(":");
+                Scanner minor = new Scanner(major.next());
+                minor.useDelimiter("_");
+                byte networkDest = (byte) Integer.parseInt(minor.next());
+                byte dest = (byte) Integer.parseInt(minor.next());
+                String message = major.next();
+                NetworkFrame frame = new NetworkFrame(name, network, dest, networkDest, (byte) 0, message);
+                frames.add(frame);
+                frame.debugFrame();
             }
         }
         catch(IOException exception) {
