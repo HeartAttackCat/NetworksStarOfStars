@@ -10,12 +10,11 @@ public class Node implements Runnable{
     public Node(byte network, byte name) {
         this.network = network;
         this.name = name;
+        config = new NodeConfig(name, network);
+        config.readFile();
     }
 
     public void start() {
-        config = new NodeConfig(name, network);
-        config.readFile();
-
         Thread thread = new Thread(this);
         thread.start();
     }
