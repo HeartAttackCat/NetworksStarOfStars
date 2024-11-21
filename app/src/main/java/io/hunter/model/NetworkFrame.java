@@ -23,6 +23,23 @@ public class NetworkFrame {
 
     private byte[] meat;
 
+    public NetworkFrame(byte src,byte networkSrc, byte dest, byte networkDest, byte control, byte crc, byte size, byte message[]) {
+        this.src = src;
+        this.networkSrc = networkSrc;
+        this.dest = dest;
+        this.networkDest = networkDest;
+        this.control = control;
+        this.crc = crc;
+        this.size = size;
+
+        meat = new byte[size];
+
+        for(int i = 0; i < message.length ; i++) {
+            meat[i] = message[i];
+        }
+
+    }
+
     public NetworkFrame(byte src,byte networkSrc, byte dest, byte networkDest, byte control, byte size, byte message[]) {
         this.src = src;
         this.networkSrc = networkSrc;
@@ -50,15 +67,14 @@ public class NetworkFrame {
         this.dest = totalFrame[2];
         this.networkDest = totalFrame[3];
         this.control = totalFrame[4];
-        this.size = totalFrame[5];
+        this.crc = totalFrame[5];
+        this.size = totalFrame[6];
         
         meat = new byte[size];
 
         for (int i = 0; i < size; i++) {
-            this.meat[i] = totalFrame[6+i];
+            this.meat[i] = totalFrame[7+i];
         }
-
-        this.crc = genCRC();
     }
 
     public byte getSrc() {
@@ -94,16 +110,17 @@ public class NetworkFrame {
     }
 
     public byte[] generateFrame() {
-        byte[] totalFrame = new byte[5+size];
+        byte[] totalFrame = new byte[7+size];
         totalFrame[0] = src;
         totalFrame[1] = networkSrc;
         totalFrame[2] = dest;
         totalFrame[3] = networkDest;
         totalFrame[4] = control;
-        totalFrame[5] = size;
+        totalFrame[5] = crc;
+        totalFrame[6] = size;
 
         for (int i = 0; i < size; i++) {
-            totalFrame[6+i] = meat[i];
+            totalFrame[7+i] = meat[i];
         }
 
         return totalFrame;
