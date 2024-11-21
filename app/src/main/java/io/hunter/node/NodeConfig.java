@@ -2,7 +2,6 @@ package io.hunter.node;
 
 import io.hunter.model.*;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -27,6 +26,10 @@ public class NodeConfig {
         this.name = name;
     }
 
+    public NetworkFrame getFrame() {
+        return frames.poll();
+    }
+
     public void readFile() {
         configFile = new File(fileName);
         try { 
@@ -42,7 +45,6 @@ public class NodeConfig {
                 String message = major.next();
                 NetworkFrame frame = new NetworkFrame(name, network, dest, networkDest, (byte) 0, message);
                 frames.add(frame);
-                frame.debugFrame();
             }
         }
         catch(IOException exception) {
