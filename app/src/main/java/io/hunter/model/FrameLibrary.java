@@ -15,9 +15,10 @@ public class FrameLibrary {
         byte dest = reader.readNBytes(1)[0];
         byte destNetwork = reader.readNBytes(1)[0];
         byte control = reader.readNBytes(1)[0];
+        byte crc = reader.readNBytes(1)[0];
         byte size = reader.readNBytes(1)[0];
         byte[] meat = reader.readNBytes((int) size);
-        return new NetworkFrame(src, srcNetwork, dest, destNetwork, control, size, meat);
+        return new NetworkFrame(src, srcNetwork, dest, destNetwork, control, crc, size, meat);
     }
 
     public static NetworkFrame getNetworkFrame(Socket socket) throws IOException {
@@ -25,7 +26,7 @@ public class FrameLibrary {
     }
 
     public static void sendNetworkFrame(BufferedOutputStream writer, NetworkFrame frame) throws IOException {
-        writer.write(frame.getMeat());
+        writer.write(frame.generateFrame());
     }
 
     public static void sendNetworkFrame(Socket socket, NetworkFrame frame) throws IOException {
