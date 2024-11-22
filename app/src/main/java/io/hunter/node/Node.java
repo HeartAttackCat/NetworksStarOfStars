@@ -1,10 +1,15 @@
 package io.hunter.node;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.Socket;
-import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
@@ -17,11 +22,9 @@ public class Node implements Runnable{
     public byte network;
     public byte name;
 
-    private Socket socket;
-    private BufferedOutputStream writer;
-    private BufferedInputStream reader;
-
-    private ArrayList<NetworkFrame> messages = new ArrayList<>();
+    public Socket socket;
+    public OutputStream writer;
+    public InputStream reader;
 
     public Node(byte network, byte name) {
         this.network = network;
@@ -64,63 +67,60 @@ public class Node implements Runnable{
             /**
              * Begin the switch and transmitting messages.
              */
+
+            NetworkFrame message = config.getFrame();
+            
             while(true) {
-                /**
-                 * Get frame from switch.
-                 */ 
-                updateListen();
+                if (message == null)
+                    break;
+                
+                ExecutorService executor = Executors.newSingleThreadExecutor();
+                SendNetworkFrame task = new SendNetworkFrame(this, message);
+
+                Future<Boolean> future = executor.submit(task);
+
+                try {
+                    Boolean result = future.get(10, TimeUnit.SECONDS);
+                    message = config.getFrame();
+                } catch (TimeoutException e) {
+                    System.out.println("Timeout occurred, resending frame..");
+                    future.cancel(true); // Interrupt the task if it's still running
+                } catch (InterruptedException | ExecutionException e) {
+                    System.out.println("Error occurred: " + e.getMessage());
+                    e.printStackTrace();
+                } finally {
+                    future.cancel(true);
+                    executor.shutdown();
+                }
+            }
+
+            while(true) {
+                NetworkFrame incoming = FrameLibrary.getNetworkFrame(reader);
+                if (name == incoming.getDest()) {
+                    if (incoming.getControl() == 0)
+                    {
+                        nodeOutput.writeFrame(incoming);
+                        FrameLibrary.sendFrameAck(incoming, writer);
+                    }
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void updateListen() throws IOException {
-        NetworkFrame frame = FrameLibrary.getNetworkFrame(reader);
-        frame.debugFrame("Node " + name);
-        if (frame.getDest() != name)
-        {
-            return;
-        }
-        if (frame.checkCRC() != true)
-        {
-            FrameLibrary.sendBadFrameAck(frame, writer);
-            return;
-        }
-        if (isAckFrame(frame) == true) {
-            transmitMessage();
-            return;
-        }
-        nodeOutput.writeFrame(frame);
-        FrameLibrary.sendFrameAck(frame, writer);
-       
-    }
-
-    /**
-     * 
-     * @return
-     */
-    public boolean isAckFrame(NetworkFrame frame) {
-        if (frame.getControl() == 0)
-            return false;
-        if (!frame.getMessage().equalsIgnoreCase("ACK"))
-            return false;
-        return true;
-    }
-
     public void transmitMessage() throws IOException {
         NetworkFrame frame = config.getFrame();
         if(frame == null)
             return;
-        frame.debugFrame("[Node "+name+"]");
         FrameLibrary.sendNetworkFrame(writer, frame);
     }
 
     public void connect() {
         try {
             socket = new Socket("localhost", 25565);
-            writer = new BufferedOutputStream(socket.getOutputStream());
-            reader = new BufferedInputStream(socket.getInputStream());
+            writer = socket.getOutputStream();
+            reader = socket.getInputStream();
         } catch (IOException e) {
             System.out.println("[Node "+name+" Network "+network+"] Did not connect u_m_u");
         }

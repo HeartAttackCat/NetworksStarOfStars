@@ -3,13 +3,13 @@ package io.hunter.model;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.Socket;
-
-import com.google.common.graph.Network;
 
 public class FrameLibrary {
 
-    public static NetworkFrame getNetworkFrame(BufferedInputStream reader) throws IOException {
+    public static NetworkFrame getNetworkFrame(InputStream reader) throws IOException {
         byte src = reader.readNBytes(1)[0];
         byte srcNetwork = reader.readNBytes(1)[0];
         byte dest = reader.readNBytes(1)[0];
@@ -22,19 +22,19 @@ public class FrameLibrary {
     }
 
     public static NetworkFrame getNetworkFrame(Socket socket) throws IOException {
-        return getNetworkFrame(new BufferedInputStream(socket.getInputStream()));
+        return getNetworkFrame(socket.getInputStream());
     }
 
-    public static void sendNetworkFrame(BufferedOutputStream writer, NetworkFrame frame) throws IOException {
+    public static void sendNetworkFrame(OutputStream writer, NetworkFrame frame) throws IOException {
         writer.write(frame.generateFrame());
         writer.flush();
     }
 
     public static void sendNetworkFrame(Socket socket, NetworkFrame frame) throws IOException {
-        sendNetworkFrame(new BufferedOutputStream(socket.getOutputStream()), frame);
+        sendNetworkFrame(socket.getOutputStream(), frame);
     }
 
-    public static void sendBadFrameAck(NetworkFrame frame, BufferedOutputStream writer) throws IOException {
+    public static void sendBadFrameAck(NetworkFrame frame, OutputStream writer) throws IOException {
         byte dest = frame.getSrc();
         byte networkDest = frame.getNetworkSource();
         byte src = frame.getDest();
@@ -46,9 +46,9 @@ public class FrameLibrary {
         sendNetworkFrame(writer, newFrame);
     }
 
-    public static void sendFrameAck(NetworkFrame frame, BufferedOutputStream writer) throws IOException {
-        NetworkFrame ackFrame = new NetworkFrame(frame.getDest(), frame.getNetworkDest(), frame.getSrc(), frame.getNetworkSource(), (byte) 1, "ACK");
-        ackFrame.debugFrame("NODE");
+    public static void sendFrameAck(NetworkFrame frame, OutputStream writer) throws IOException {
+        byte control = 1;
+        NetworkFrame ackFrame = new NetworkFrame(frame.getDest(), frame.getNetworkDest(), frame.getSrc(), frame.getNetworkSource(), control, "ACK");
         sendNetworkFrame(writer, ackFrame);
     }
 }

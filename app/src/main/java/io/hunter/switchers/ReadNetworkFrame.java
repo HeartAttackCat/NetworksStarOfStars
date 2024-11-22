@@ -1,20 +1,17 @@
 package io.hunter.switchers;
 
 import java.io.BufferedInputStream;
-import java.net.Socket;
-import java.util.Queue;
+import java.io.InputStream;
 import java.util.concurrent.Callable;
-
-import com.google.common.graph.Network;
 
 import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
 
 public class ReadNetworkFrame implements Callable<NetworkFrame> {
 
-    private BufferedInputStream reader;
+    private InputStream reader;
 
-    public ReadNetworkFrame(BufferedInputStream reader) {
+    public ReadNetworkFrame(InputStream reader) {
         this.reader = reader;
     }
 

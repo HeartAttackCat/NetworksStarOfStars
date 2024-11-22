@@ -15,8 +15,8 @@ public class Application {
             e.printStackTrace();
         }
 
-        Node node = new Node((byte) 1, (byte)1);
-        Node node2 = new Node((byte) 1, (byte)2);
-        Node node3 = new Node((byte) 1, (byte)3);
+        Node node = new Node((byte) 1, (byte) 1);
+        Node node2 = new Node((byte) 1, (byte) 2);
+        Node node3 = new Node((byte) 1, (byte) 3);
     }
 }

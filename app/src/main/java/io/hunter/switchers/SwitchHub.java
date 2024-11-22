@@ -1,8 +1,8 @@
 package io.hunter.switchers;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -10,12 +10,6 @@ import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
@@ -31,13 +25,19 @@ public class SwitchHub implements Runnable {
     private ArrayList<Socket> hosts;
     private Queue<NetworkFrame> frameQueue = new LinkedList<>();
 
-    private Dictionary<Socket, BufferedInputStream> readers = new Hashtable<Socket, BufferedInputStream>();
-    private Dictionary<Socket, BufferedOutputStream> writers = new Hashtable<Socket, BufferedOutputStream>();
+    private Dictionary<Socket, InputStream> readers = new Hashtable<Socket, InputStream>();
+    private Dictionary<Socket, OutputStream> writers = new Hashtable<Socket, OutputStream>();
 
     private Dictionary<Byte, Socket> routes = new Hashtable<Byte, Socket>();
 
     public SwitchHub(int totalConnections, byte network) {
+        /**
+         * Setup the switch name.
+         */
         this.network = network;
+        /**
+         * Configure total connections.
+         */
         this.totalConnections = totalConnections;
 
         Thread switchMain = new Thread(this);
@@ -56,54 +56,40 @@ public class SwitchHub implements Runnable {
      */
     public void switchMessages() {
         /**
-         * First listen for frames from each node.
-         * And add them to the queue.
+         * 
          */
-
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        int available = 0;
         
-        for (int i = 0; i < hosts.size() ; i++) {
+        for (Socket socket : hosts) {
 
             
             //TODO At some point implement the ability to time out when receivign data from a node.
-                
-            ExecutorService executor = Executors.newSingleThreadExecutor();
-            ReadNetworkFrame task = new ReadNetworkFrame(readers.get(hosts.get(i)));
-
-            Future<NetworkFrame> future = executor.submit(task);
-
             try {
-                NetworkFrame result = future.get(1, TimeUnit.SECONDS);
-                frameQueue.add(result);
-                addRoute(result, hosts.get(i));
-                result.debugFrame("SWITCH");
-            } catch (TimeoutException e) {
-                System.out.println("Timeout occurred, skipping this.");
-                future.cancel(true); // Interrupt the task if it's still running
-            } catch (InterruptedException | ExecutionException e) {
-                System.out.println("Error occurred: " + e.getMessage());
-            } finally {
-                executor.shutdown();
+                available = socket.getInputStream().available();
+                if (available != 0)
+                {
+                    NetworkFrame frame = FrameLibrary.getNetworkFrame(socket);
+                    frameQueue.add(frame);
+                    addRoute(frame, socket);
+                    sendFrame(frameQueue.poll());
+                }
+            } catch (IOException e)
+            {
+                e.printStackTrace();
             }
 
-            /**
-             * Read frame
-             */
+            
         }
-        /**
-         * After getting at least one frame from the nodes then we want to 
-         * send a frame if one exists in the queue.
-         */
-        sendFrame(frameQueue.poll());
     }
 
     public void addRoute(NetworkFrame frame, Socket socket) {
-        routes.put(frame.getSrc(), socket);
+        byte src = frame.getSrc();
+        if (routes.get(src) != null)
+            return;
+        
+        routes.put(src, socket);
+        System.out.println("Adding route for "+  src);
+        
     }
 
     /**
@@ -114,9 +100,16 @@ public class SwitchHub implements Runnable {
     public void sendFrame(NetworkFrame frame) {
         if(frame == null)
             return;
+        if(sendThruRoute(frame) == true)
+            return;
+        
+        flood(frame);
+    }
+
+    public void flood(NetworkFrame frame) {
         for(Socket socket: hosts) {
             try {
-            FrameLibrary.sendNetworkFrame(socket, frame);
+                FrameLibrary.sendNetworkFrame(socket, frame);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -133,18 +126,20 @@ public class SwitchHub implements Runnable {
         //Get the the destination byte from the frame.
         byte dest = frame.getDest();
         //Grab the socket.
+        
         Socket recipient = routes.get(dest);
 
-        /**
-         * Attempt to send over the socket.
-         */
+        if (recipient == null)
+            return false;
+
         try {
-            FrameLibrary.sendNetworkFrame(recipient, frame);
+            FrameLibrary.sendNetworkFrame(writers.get(recipient), frame);
+            return true;
         }
         catch (IOException e) {
-            System.out.println("Failed to send frame to socket.");
+            e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     /**
@@ -157,8 +152,8 @@ public class SwitchHub implements Runnable {
                 Socket socket = server.accept();
                 hosts.add(socket);
 
-                readers.put(socket, new BufferedInputStream(socket.getInputStream(), 24000));
-                writers.put(socket, new BufferedOutputStream(socket.getOutputStream(), 24000));
+                readers.put(socket, socket.getInputStream());
+                writers.put(socket, socket.getOutputStream());
 
                 connected++;
             }
