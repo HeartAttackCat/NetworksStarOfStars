@@ -61,9 +61,6 @@ public class SwitchHub implements Runnable {
         int available = 0;
         
         for (Socket socket : hosts) {
-
-            
-            //TODO At some point implement the ability to time out when receivign data from a node.
             try {
                 available = socket.getInputStream().available();
                 if (available != 0)
