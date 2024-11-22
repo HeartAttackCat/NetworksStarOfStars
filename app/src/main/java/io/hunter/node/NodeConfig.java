@@ -2,7 +2,6 @@ package io.hunter.node;
 
 import io.hunter.model.*;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -27,14 +26,21 @@ public class NodeConfig {
         this.name = name;
     }
 
+    public NetworkFrame getFrame() {
+        return frames.poll();
+    }
+
     public void readFile() {
         configFile = new File(fileName);
         try { 
             FileReader fileReader = new FileReader(configFile);
+            @SuppressWarnings("resource")
             Scanner fileLine = new Scanner(fileReader);
             while(fileLine.hasNext()) {
+                @SuppressWarnings("resource")
                 Scanner major = new Scanner(fileLine.nextLine());
                 major.useDelimiter(":");
+                @SuppressWarnings("resource")
                 Scanner minor = new Scanner(major.next());
                 minor.useDelimiter("_");
                 byte networkDest = (byte) Integer.parseInt(minor.next());
@@ -42,7 +48,6 @@ public class NodeConfig {
                 String message = major.next();
                 NetworkFrame frame = new NetworkFrame(name, network, dest, networkDest, (byte) 0, message);
                 frames.add(frame);
-                frame.debugFrame();
             }
         }
         catch(IOException exception) {
