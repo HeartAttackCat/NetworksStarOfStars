@@ -150,7 +150,7 @@ public class NetworkFrame {
         return true;
     }
 
-    public void debugFrame() {
-        System.out.println("[Frame Debug] Source:" + src + ", Network Source:" + networkSrc + ", Destination:" + dest + ", Network Destination:" + networkDest + ", CRC:" + crc + ", Size:" + size + "\n\tMessage:" + getMessage());
+    public void debugFrame(String program) {
+        System.out.println("["+program+"][Frame Debug] Source:" + src + ", Network Source:" + networkSrc + ", Destination:" + dest + ", Network Destination:" + networkDest + ", CRC:" + crc + ", Size:" + size + "\n\tMessage:" + getMessage());
     }
 }

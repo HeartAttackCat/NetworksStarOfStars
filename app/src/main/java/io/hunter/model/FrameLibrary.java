@@ -27,9 +27,28 @@ public class FrameLibrary {
 
     public static void sendNetworkFrame(BufferedOutputStream writer, NetworkFrame frame) throws IOException {
         writer.write(frame.generateFrame());
+        writer.flush();
     }
 
     public static void sendNetworkFrame(Socket socket, NetworkFrame frame) throws IOException {
         sendNetworkFrame(new BufferedOutputStream(socket.getOutputStream()), frame);
+    }
+
+    public static void sendBadFrameAck(NetworkFrame frame, BufferedOutputStream writer) throws IOException {
+        byte dest = frame.getSrc();
+        byte networkDest = frame.getNetworkSource();
+        byte src = frame.getDest();
+        byte networkSrc = frame.getNetworkDest();
+        byte control = 1;
+        String messgae = "CORRUPTED";
+        
+        NetworkFrame newFrame = new NetworkFrame(src, networkSrc, dest, networkDest, control, messgae);
+        sendNetworkFrame(writer, newFrame);
+    }
+
+    public static NetworkFrame sendFrameAck(NetworkFrame frame) {
+        NetworkFrame ackFrame = new NetworkFrame(frame.getDest(), frame.getNetworkDest(), frame.getSrc(), frame.getNetworkSource(), (byte) 1, "ACK");
+        ackFrame.debugFrame("NODE");
+        return ackFrame;
     }
 }

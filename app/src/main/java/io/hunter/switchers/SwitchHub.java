@@ -10,7 +10,16 @@ import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Queue;
-  
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import com.google.common.graph.Network;
+
 import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
 
@@ -49,31 +58,96 @@ public class SwitchHub implements Runnable {
      * Switch messages stage of the switch. Will run until all connections have closed out.
      */
     public void switchMessages() {
-        try {
-            for (Socket socket : hosts) {
-                System.out.println("Listening in");
-                NetworkFrame frame = FrameLibrary.getNetworkFrame(readers.get(socket));
-                System.out.println("Listening in 2");
-                addRoute(frame, socket);
+        /**
+         * First listen for frames from each node.
+         * And add them to the queue.
+         */
 
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        for (Socket socket : hosts) {
+
+            
+            //TODO At some point implement the ability to time out when receivign data from a node.
                 
-                System.out.print("[SWITCH Network "+ network +"]");
-                frameQueue.add(frame);
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            ReadNetworkFrame task = new ReadNetworkFrame(readers.get(socket));
+
+            Future<NetworkFrame> future = executor.submit(task);
+
+            try {
+                NetworkFrame result = future.get(10, TimeUnit.SECONDS);
+                frameQueue.add(result);
+                addRoute(result, socket);
+                result.debugFrame("SWITCH");
+            } catch (TimeoutException e) {
+                System.out.println("Timeout occurred, skipping this.");
+                future.cancel(true); // Interrupt the task if it's still running
+            } catch (InterruptedException | ExecutionException e) {
+                System.out.println("Error occurred: " + e.getMessage());
+            } finally {
+                executor.shutdown();
             }
 
-            sendFrame();
-        } catch(IOException e) {
-            System.out.println("[Switch Network "+ network +"] Unable to read socket.");
+            /**
+             * Read frame
+             */
         }
-
+        /**
+         * After getting at least one frame from the nodes then we want to 
+         * send a frame if one exists in the queue.
+         */
+        sendFrame(frameQueue.poll());
     }
 
     public void addRoute(NetworkFrame frame, Socket socket) {
         routes.put(frame.getSrc(), socket);
     }
 
-    public void sendFrame() {
-        
+    /**
+     * This function determines where and how frames should be sent once they are in the Queue.
+     * 
+     * @param frame the frame we wish to send accross the network.
+     */
+    public void sendFrame(NetworkFrame frame) {
+        if(frame == null)
+            return;
+        for(Socket socket: hosts) {
+            try {
+            FrameLibrary.sendNetworkFrame(socket, frame);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * This function will send the network frame through the route to it's host if we know
+     * who the host is.
+     * @param frame
+     * @return
+     */
+    public boolean sendThruRoute(NetworkFrame frame) {
+        //Get the the destination byte from the frame.
+        byte dest = frame.getDest();
+        //Grab the socket.
+        Socket recipient = routes.get(dest);
+
+        /**
+         * Attempt to send over the socket.
+         */
+        try {
+            FrameLibrary.sendNetworkFrame(recipient, frame);
+        }
+        catch (IOException e) {
+            System.out.println("Failed to send frame to socket.");
+        }
+        return false;
     }
 
     /**
@@ -86,8 +160,8 @@ public class SwitchHub implements Runnable {
                 Socket socket = server.accept();
                 hosts.add(socket);
 
-                readers.put(socket, new BufferedInputStream(socket.getInputStream()));
-                writers.put(socket, new BufferedOutputStream(socket.getOutputStream()));
+                readers.put(socket, new BufferedInputStream(socket.getInputStream(), 1000));
+                writers.put(socket, new BufferedOutputStream(socket.getOutputStream(), 1000));
 
                 connected++;
             }
@@ -102,9 +176,13 @@ public class SwitchHub implements Runnable {
 
     @Override
     public void run() {
+        /**
+         * Initialize the vairables and other components for our switch.
+         */
         start();
-        //Get all the nodes connected. Wait for them to join.
-        
+        /**
+         * Get all incoming connections.
+         */
         getConnections();
         
         //Transmission stage of the switch.
