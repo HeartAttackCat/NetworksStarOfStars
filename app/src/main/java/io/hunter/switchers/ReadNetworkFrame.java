@@ -1,6 +1,5 @@
 package io.hunter.switchers;
 
-import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.util.concurrent.Callable;
 

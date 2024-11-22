@@ -34,10 +34,13 @@ public class NodeConfig {
         configFile = new File(fileName);
         try { 
             FileReader fileReader = new FileReader(configFile);
+            @SuppressWarnings("resource")
             Scanner fileLine = new Scanner(fileReader);
             while(fileLine.hasNext()) {
+                @SuppressWarnings("resource")
                 Scanner major = new Scanner(fileLine.nextLine());
                 major.useDelimiter(":");
+                @SuppressWarnings("resource")
                 Scanner minor = new Scanner(major.next());
                 minor.useDelimiter("_");
                 byte networkDest = (byte) Integer.parseInt(minor.next());

@@ -11,7 +11,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
 
 public class Node implements Runnable{
@@ -39,83 +38,82 @@ public class Node implements Runnable{
         thread.start();
     }
 
-    public void start() {
-        /**
-         * Attempt to initialize our readers and writers.
-         */
-        
-    }
-
     public void run() {
         /**
          * First grab connection before doing anything. No connection, nothing to do.
          */
         connect();
         /**
-         * Intiialize the system and get ready to transmit first frame.
+         * Make sure everything setup correctly.
          */
-        start();
         if(socket == null || writer == null || reader == null) {
             System.out.println("Was unable to connect");
             return;
         }
+        /**
+         * Begin the major stages of the node.
+         */
         try {
-             /**
-             * Send first message out.
-             */
-            transmitMessage();
-            /**
-             * Begin the switch and transmitting messages.
-             */
 
+            //Get the first message node wishes to send.
             NetworkFrame message = config.getFrame();
             
+            
             while(true) {
+                //Exit transmitting mode once there are no more frames to transmit.
                 if (message == null)
                     break;
-                
+
+                //When in transmitting mode its important to make sure that the message has a time out associated with it.
                 ExecutorService executor = Executors.newSingleThreadExecutor();
+                //Make a new task that will keep sending the frame until an Ackloedgemnt is heard.
                 SendNetworkFrame task = new SendNetworkFrame(this, message);
 
+                //Make a future object and execute.
                 Future<Boolean> future = executor.submit(task);
 
                 try {
-                    Boolean result = future.get(10, TimeUnit.SECONDS);
+                    //Try to get the object in 10 seconds.
+                    future.get(10, TimeUnit.SECONDS);
+                    //Get next frame ready if it was able to transmit sucsessfully.
                     message = config.getFrame();
-                } catch (TimeoutException e) {
+                } 
+                //If it did not get it in 10 seconds dont do anything and let loop execute again to send it.
+                catch (TimeoutException e) {
                     System.out.println("Timeout occurred, resending frame..");
                     future.cancel(true); // Interrupt the task if it's still running
-                } catch (InterruptedException | ExecutionException e) {
+                }
+                //Just in case if a inttruption or an execution error happens
+                catch (InterruptedException | ExecutionException e) {
                     System.out.println("Error occurred: " + e.getMessage());
                     e.printStackTrace();
-                } finally {
+                } 
+                finally {
+                    //Finally end the task and the executor object.
                     future.cancel(true);
                     executor.shutdown();
                 }
             }
 
+            /**
+             * Move into the next stage, which is lsitening until the switch says to close.
+             */
+
             while(true) {
-                NetworkFrame incoming = FrameLibrary.getNetworkFrame(reader);
-                if (name == incoming.getDest()) {
-                    if (incoming.getControl() == 0)
-                    {
-                        nodeOutput.writeFrame(incoming);
-                        FrameLibrary.sendFrameAck(incoming, writer);
-                    }
-                }
+                /**
+                 * Node lib helps unify the cycle process for interrpreting the messages since its virtually the same cycle that
+                 * SendNetworkFrame object uses.
+                 */
+                NodeLib.cycle(nodeOutput, name, writer, reader);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void transmitMessage() throws IOException {
-        NetworkFrame frame = config.getFrame();
-        if(frame == null)
-            return;
-        FrameLibrary.sendNetworkFrame(writer, frame);
-    }
-
+    /**
+     * Setup the connection.
+     */
     public void connect() {
         try {
             socket = new Socket("localhost", 25565);
