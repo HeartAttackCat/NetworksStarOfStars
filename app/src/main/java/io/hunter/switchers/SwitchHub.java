@@ -10,15 +10,12 @@ import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import com.google.common.graph.Network;
 
 import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
@@ -70,20 +67,20 @@ public class SwitchHub implements Runnable {
             e.printStackTrace();
         }
         
-        for (Socket socket : hosts) {
+        for (int i = 0; i < hosts.size() ; i++) {
 
             
             //TODO At some point implement the ability to time out when receivign data from a node.
                 
             ExecutorService executor = Executors.newSingleThreadExecutor();
-            ReadNetworkFrame task = new ReadNetworkFrame(readers.get(socket));
+            ReadNetworkFrame task = new ReadNetworkFrame(readers.get(hosts.get(i)));
 
             Future<NetworkFrame> future = executor.submit(task);
 
             try {
-                NetworkFrame result = future.get(10, TimeUnit.SECONDS);
+                NetworkFrame result = future.get(1, TimeUnit.SECONDS);
                 frameQueue.add(result);
-                addRoute(result, socket);
+                addRoute(result, hosts.get(i));
                 result.debugFrame("SWITCH");
             } catch (TimeoutException e) {
                 System.out.println("Timeout occurred, skipping this.");
@@ -160,11 +157,12 @@ public class SwitchHub implements Runnable {
                 Socket socket = server.accept();
                 hosts.add(socket);
 
-                readers.put(socket, new BufferedInputStream(socket.getInputStream(), 1000));
-                writers.put(socket, new BufferedOutputStream(socket.getOutputStream(), 1000));
+                readers.put(socket, new BufferedInputStream(socket.getInputStream(), 24000));
+                writers.put(socket, new BufferedOutputStream(socket.getOutputStream(), 24000));
 
                 connected++;
             }
+            server.close();
 
             System.out.println("Switching to transmission.");
 

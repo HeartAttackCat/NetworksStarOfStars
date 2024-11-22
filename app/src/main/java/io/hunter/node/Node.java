@@ -68,56 +68,32 @@ public class Node implements Runnable{
                 /**
                  * Get frame from switch.
                  */ 
-                NetworkFrame frame = FrameLibrary.getNetworkFrame(reader);
-
-                frame.debugFrame("Node " + name);
-                /**
-                 * Is the frame for me?
-                 */
-                if(frame.getDest() == name)
-                {
-                    
-                    /**
-                     * Check integretiy of the frame.
-                     */
-                    if(frame.checkCRC() == true) {
-                        /**
-                         * If the frame is acknowledgment we will send our next frame.
-                         */
-                        if(isAckFrame(frame)) {
-                            System.out.println("[NODE "+name+"]I GOT ACKLOWEDGE, SENDING NEXT FRAME");
-                            transmitMessage();
-                        }
-                        /**
-                         * If frame is not acknowledgement then it is a message we need to store,
-                         * then we need to send proper Ack.
-                         */
-                        else {
-                            frame.debugFrame("Node " + name);
-                            /**
-                             * Write received message.
-                             */
-                            nodeOutput.writeFrame(frame);
-                            /**
-                             * Send acknowledgment to the switch.
-                             */
-                            NetworkFrame ack = FrameLibrary.sendFrameAck(frame);
-                            socket.getOutputStream().write(ack.generateFrame());
-                            socket.getOutputStream().flush();
-
-                            System.out.println("after the sending the ACK");
-                        }
-                    } else {
-                        FrameLibrary.sendBadFrameAck(frame, writer);
-                    }
-                }
+                updateListen();
             }
         } catch (IOException e) {
             e.printStackTrace();
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
         }
+    }
+
+    public void updateListen() throws IOException {
+        NetworkFrame frame = FrameLibrary.getNetworkFrame(reader);
+        frame.debugFrame("Node " + name);
+        if (frame.getDest() != name)
+        {
+            return;
+        }
+        if (frame.checkCRC() != true)
+        {
+            FrameLibrary.sendBadFrameAck(frame, writer);
+            return;
+        }
+        if (isAckFrame(frame) == true) {
+            transmitMessage();
+            return;
+        }
+        nodeOutput.writeFrame(frame);
+        FrameLibrary.sendFrameAck(frame, writer);
+       
     }
 
     /**
@@ -132,7 +108,7 @@ public class Node implements Runnable{
         return true;
     }
 
-    public void transmitMessage() throws IOException, InterruptedException{
+    public void transmitMessage() throws IOException {
         NetworkFrame frame = config.getFrame();
         if(frame == null)
             return;

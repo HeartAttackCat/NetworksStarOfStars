@@ -46,9 +46,9 @@ public class FrameLibrary {
         sendNetworkFrame(writer, newFrame);
     }
 
-    public static NetworkFrame sendFrameAck(NetworkFrame frame) {
+    public static void sendFrameAck(NetworkFrame frame, BufferedOutputStream writer) throws IOException {
         NetworkFrame ackFrame = new NetworkFrame(frame.getDest(), frame.getNetworkDest(), frame.getSrc(), frame.getNetworkSource(), (byte) 1, "ACK");
         ackFrame.debugFrame("NODE");
-        return ackFrame;
+        sendNetworkFrame(writer, ackFrame);
     }
 }
