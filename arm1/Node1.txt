@@ -1,5 +1,7 @@
-1_2: fuck you
-1_2: Shut up whore
-1_2: Shut up bitch
-1_2: Gross
-1_2: nope
+1_2: Message from node 1 to node 2.
+1_2: Message from node 1 to node 2.
+1_2: Message from node 1 to node 2.
+1_2: Message from node 1 to node 2.
+1_3: Message from node 1 to node 3.
+1_3: Message from node 1 to node 3.
+1_3: Message from node 1 to node 3.
