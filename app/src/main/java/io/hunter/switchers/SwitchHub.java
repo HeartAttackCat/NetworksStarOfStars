@@ -22,7 +22,7 @@ public class SwitchHub implements Runnable {
 
     private int connected = 0, totalConnections;
 
-    private ArrayList<Socket> hosts;
+    private ArrayList<Socket> hosts = new ArrayList<>();
     private Queue<NetworkFrame> frameQueue = new LinkedList<>();
 
     private Dictionary<Socket, InputStream> readers = new Hashtable<Socket, InputStream>();
@@ -42,13 +42,6 @@ public class SwitchHub implements Runnable {
 
         Thread switchMain = new Thread(this);
         switchMain.start();
-    }
-
-    /**
-     * Intiialize all the variables and perform setup for switch.
-     */
-    public void start() {
-        hosts = new ArrayList<Socket>();
     }
 
     /**
@@ -166,10 +159,6 @@ public class SwitchHub implements Runnable {
 
     @Override
     public void run() {
-        /**
-         * Initialize the vairables and other components for our switch.
-         */
-        start();
         /**
          * Get all incoming connections.
          */
