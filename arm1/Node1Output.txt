@@ -1,5 +1,4 @@
-1_3:Hello
-1_2: Hell no
-1_3:Meow
-1_2: Bish please
-1_3:Teehee
+1_2: Message from node 2 to node 1.
+1_2: Message from node 2 to node 1.
+1_2: Message from node 2 to node 1.
+2_1: Cross network message from network 2 to network1.

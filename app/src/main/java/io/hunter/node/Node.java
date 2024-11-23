@@ -20,14 +20,16 @@ public class Node implements Runnable{
 
     public byte network;
     public byte name;
+    private int port;
 
     public Socket socket;
     public OutputStream writer;
     public InputStream reader;
 
-    public Node(byte network, byte name) {
+    public Node(byte network, byte name, int port) {
         this.network = network;
         this.name = name;
+        this.port = port;
 
         config = new NodeConfig(name, network);
         config.readFile();
@@ -116,7 +118,7 @@ public class Node implements Runnable{
      */
     public void connect() {
         try {
-            socket = new Socket("localhost", 25565);
+            socket = new Socket("localhost", port);
             writer = socket.getOutputStream();
             reader = socket.getInputStream();
         } catch (IOException e) {

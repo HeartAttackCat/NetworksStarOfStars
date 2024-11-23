@@ -2,21 +2,26 @@ package io.hunter;
 
 import io.hunter.node.Node;
 import io.hunter.switchers.SwitchHub;
+import io.hunter.switchers.SwitchNode;
 
 public class Application {
 
+    private static int[] networks = {25565, 2010, 2030, 10800};
+
+    private static int hubs = 2;
+    private static int nodes = 2;
+
     public static void main(String[] args) {
-        SwitchHub hub = new SwitchHub(3, (byte) 1);
+        new SwitchHub(hubs, 7777);
 
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        for (int hub = 1; hub <= hubs; hub++) {
+            System.out.println("[Main] Initializing hub " + hub);
+            new SwitchNode(nodes, (byte) hub, networks[hub]);
+
+            for (int node = 1; node < nodes + 1; node++) {
+                System.out.println("[Main] Initializing node " + node + " for network " + hub);
+                new Node((byte) hub, (byte) node, networks[hub]);
+            }
         }
-
-        Node node = new Node((byte) 1, (byte) 1);
-        Node node2 = new Node((byte) 1, (byte) 2);
-        Node node3 = new Node((byte) 1, (byte) 3);
     }
 }

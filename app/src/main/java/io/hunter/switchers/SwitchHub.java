@@ -8,167 +8,140 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.Hashtable;
-import java.util.LinkedList;
-import java.util.Queue;
 
 import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
 
 public class SwitchHub implements Runnable {
-    
-    private boolean transmit = true;
 
-    private byte network;
+    private int totalConnections = 0, connected;
 
-    private int connected = 0, totalConnections;
+    private int port;
 
-    private ArrayList<Socket> hosts = new ArrayList<>();
-    private Queue<NetworkFrame> frameQueue = new LinkedList<>();
+    //All Connections
+    private ArrayList<Socket> hosts;
 
-    private Dictionary<Socket, InputStream> readers = new Hashtable<Socket, InputStream>();
-    private Dictionary<Socket, OutputStream> writers = new Hashtable<Socket, OutputStream>();
+    //Routes to all hubs
+    private Dictionary<Byte, Socket> routes;
 
-    private Dictionary<Byte, Socket> routes = new Hashtable<Byte, Socket>();
+    //The input streams and output streams.
+    private Dictionary<Socket, InputStream> readers;
+    private Dictionary<Socket, OutputStream> writers;
 
-    public SwitchHub(int totalConnections, byte network) {
-        /**
-         * Setup the switch name.
-         */
-        this.network = network;
-        /**
-         * Configure total connections.
-         */
+    //Start Hub of Hubs thread.
+    public SwitchHub(int totalConnections, int port) {
         this.totalConnections = totalConnections;
-
-        Thread switchMain = new Thread(this);
-        switchMain.start();
+        this.port = port;
+        Thread thread =new Thread(this);
+        thread.start();
     }
 
-    /**
-     * Switch messages stage of the switch. Will run until all connections have closed out.
-     */
     public void switchMessages() {
-        /**
-         * 
-         */
-        int available = 0;
-        
-        for (Socket socket : hosts) {
+        for (Socket host : hosts) {
+            InputStream reader = readers.get(host);
+            OutputStream writer = writers.get(host);
+
             try {
-                available = socket.getInputStream().available();
-                if (available != 0)
-                {
-                    NetworkFrame frame = FrameLibrary.getNetworkFrame(socket);
-                    frameQueue.add(frame);
-                    addRoute(frame, socket);
-                    sendFrame(frameQueue.poll());
-                }
-            } catch (IOException e)
-            {
-                e.printStackTrace();
-            }
-
-            
-        }
-    }
-
-    public void addRoute(NetworkFrame frame, Socket socket) {
-        byte src = frame.getSrc();
-        if (routes.get(src) != null)
-            return;
-        
-        routes.put(src, socket);
-        System.out.println("Adding route for "+  src);
-        
-    }
-
-    /**
-     * This function determines where and how frames should be sent once they are in the Queue.
-     * 
-     * @param frame the frame we wish to send accross the network.
-     */
-    public void sendFrame(NetworkFrame frame) {
-        if(frame == null)
-            return;
-        if(sendThruRoute(frame) == true)
-            return;
-        
-        flood(frame);
-    }
-
-    public void flood(NetworkFrame frame) {
-        for(Socket socket: hosts) {
-            try {
-                FrameLibrary.sendNetworkFrame(socket, frame);
+                int available = reader.available();
+                if(reader.available() != 0)
+                    {
+                        NetworkFrame message;
+                        try {
+                            message = FrameLibrary.getNetworkFrame(reader);
+                            addRoute(host, message.getNetworkSource());
+                            message.debugFrame("Main Hub");
+                            sendMessage(message);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    /**
-     * This function will send the network frame through the route to it's host if we know
-     * who the host is.
-     * @param frame
-     * @return
-     */
-    public boolean sendThruRoute(NetworkFrame frame) {
-        //Get the the destination byte from the frame.
-        byte dest = frame.getDest();
-        //Grab the socket.
+    public void sendMessage(NetworkFrame message) {
+        if(tryRoute(message, message.getNetworkDest()))
+            return;
         
-        Socket recipient = routes.get(dest);
+        floodMessage(message);
+    }
 
-        if (recipient == null)
+    public void addRoute(Socket socket, Byte src) {
+        if (routes.get(src) != null)
+            return;
+        
+        routes.put(src, socket);
+    }
+
+    public boolean tryRoute(NetworkFrame message, byte dest) {
+        Socket receiver = routes.get(dest);
+
+        if(receiver == null)
             return false;
-
+        
         try {
-            FrameLibrary.sendNetworkFrame(writers.get(recipient), frame);
-            return true;
-        }
-        catch (IOException e) {
+            FrameLibrary.sendNetworkFrame(writers.get(receiver), message);
+        } catch ( IOException e) {
             e.printStackTrace();
-            return false;
+        }
+        return true;
+    }
+
+    public void floodMessage(NetworkFrame message) {
+        for (Socket host : hosts) {
+            try {
+                FrameLibrary.sendNetworkFrame(host, message);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    /**
-     * Method for getting all the connections.
-     */
-    public void getConnections () {
+    public void getConnections() {
+        //Loop through until everything is connected.
+
         try {
-            ServerSocket server = new ServerSocket(25565);
-            while (connected != totalConnections) {
-                Socket socket = server.accept();
-                hosts.add(socket);
+            ServerSocket server = new ServerSocket(port);
 
-                readers.put(socket, socket.getInputStream());
-                writers.put(socket, socket.getOutputStream());
+            for ( int i = 0; i < totalConnections; i++) {
+                
 
-                connected++;
+                Socket connection = server.accept();
+
+                hosts.add(connection);
+
+                writers.put(connection, connection.getOutputStream());
+                readers.put(connection, connection.getInputStream());
+
+                
             }
+            
             server.close();
-
-            System.out.println("Switching to transmission.");
-
-        } catch(IOException e) {
-            System.out.println("[Switch Network " + network + "]Failed to start Switch");
-            System.exit(-3);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+    }
+
+    public void init() {
+        hosts = new ArrayList<>();
+        routes = new Hashtable<>();
+        writers = new Hashtable<>();
+        readers = new Hashtable<>();
     }
 
     @Override
-    public void run() {
-        /**
-         * Get all incoming connections.
-         */
+    public void run(){
+        //Intitilization stage.
+        init();
+        //Get hub connections
         getConnections();
         
-        //Transmission stage of the switch.
-        while(transmit) {
+        //Begin switching frame loop.
+        //TODO make sure to add terminating sequence.
+        while(true) {
             switchMessages();
-
         }
-
     }
 }
