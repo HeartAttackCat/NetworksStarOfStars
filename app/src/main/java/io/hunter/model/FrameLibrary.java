@@ -49,4 +49,47 @@ public class FrameLibrary {
         NetworkFrame ackFrame = new NetworkFrame(frame.getDest(), frame.getNetworkDest(), frame.getSrc(), frame.getNetworkSource(), control, "ACK");
         sendNetworkFrame(writer, ackFrame);
     }
+
+    public static NetworkFrame sendBlockedFrameAck(NetworkFrame frame) {
+        byte control = 1;
+        NetworkFrame ackFrame = new NetworkFrame(frame.getDest(), frame.getNetworkDest(), frame.getSrc(), frame.getNetworkSource(), control, "BLOCKED");
+        return ackFrame;
+    }
+
+    public static void sendTermNodeFrame(byte name, byte network, OutputStream writer) throws IOException {
+        NetworkFrame terminating = new NetworkFrame(
+            name,
+            network,
+            (byte) 0,
+            (byte) 0,
+            (byte) 1,
+            "NODE_TERM"
+        );
+        sendNetworkFrame(writer, terminating);
+    }
+
+    public static void sendTermNetworkFrame(byte network, OutputStream writer) throws IOException {
+        NetworkFrame terminating = new NetworkFrame(
+            (byte) 0,
+            network,
+            (byte) 0,
+            (byte) 0,
+            (byte) 1,
+            "NETWORK_TERM"
+        );
+        sendNetworkFrame(writer, terminating);
+    }
+
+    public static NetworkFrame genGlobalTerm() {
+        NetworkFrame terminating = new NetworkFrame(
+            (byte) 0,
+            (byte) 0,
+            (byte) 0,
+            (byte) 0,
+            (byte) 1,
+            "GLOBAL_TERM"
+        );
+        return terminating;
+    }
+    
 }

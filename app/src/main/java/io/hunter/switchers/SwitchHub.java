@@ -14,7 +14,9 @@ import io.hunter.model.NetworkFrame;
 
 public class SwitchHub implements Runnable {
 
-    private int totalConnections = 0, connected;
+    private int totalConnections = 0, finishedTransmitting = 0, connected;
+
+    private FirewallConfig config;
 
     private int port;
 
@@ -28,10 +30,13 @@ public class SwitchHub implements Runnable {
     private Dictionary<Socket, InputStream> readers;
     private Dictionary<Socket, OutputStream> writers;
 
+    private boolean transmit = true;
+
     //Start Hub of Hubs thread.
     public SwitchHub(int totalConnections, int port) {
         this.totalConnections = totalConnections;
         this.port = port;
+
         Thread thread =new Thread(this);
         thread.start();
     }
@@ -49,8 +54,12 @@ public class SwitchHub implements Runnable {
                         try {
                             message = FrameLibrary.getNetworkFrame(reader);
                             addRoute(host, message.getNetworkSource());
-                            message.debugFrame("Main Hub");
-                            sendMessage(message);
+                            if(config.checkFirewallPolicy(message))
+                            {
+                                sendMessage(FrameLibrary.sendBlockedFrameAck(message));
+                            } else {
+                                sendMessage(message);
+                            }
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -62,10 +71,32 @@ public class SwitchHub implements Runnable {
     }
 
     public void sendMessage(NetworkFrame message) {
+        if(message == null)
+            return;
+        if(termNetworkMessage(message))
+            return;
         if(tryRoute(message, message.getNetworkDest()))
             return;
         
         floodMessage(message);
+    }
+
+    public boolean termNetworkMessage(NetworkFrame frame) {
+        if(frame.getSrc() != 0 || frame.getDest() != 0 || frame.getNetworkDest() !=0)
+            return false;
+        if(!frame.getMessage().equalsIgnoreCase("NETWORK_TERM"))
+            return false;
+        
+        finishedTransmitting++;
+
+        if(finishedTransmitting == totalConnections)
+        {
+            floodMessage(FrameLibrary.genGlobalTerm());
+            System.out.println("[Hub Main] All hubs are done transmitting.");
+            transmit = false;
+        }
+        
+        return true;
     }
 
     public void addRoute(Socket socket, Byte src) {
@@ -129,6 +160,8 @@ public class SwitchHub implements Runnable {
         routes = new Hashtable<>();
         writers = new Hashtable<>();
         readers = new Hashtable<>();
+        config = new FirewallConfig();
+        config.parseFirewallFile();
     }
 
     @Override
@@ -140,7 +173,7 @@ public class SwitchHub implements Runnable {
         
         //Begin switching frame loop.
         //TODO make sure to add terminating sequence.
-        while(true) {
+        while(transmit) {
             switchMessages();
         }
     }

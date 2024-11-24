@@ -11,6 +11,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
 
 public class Node implements Runnable{
@@ -21,6 +22,8 @@ public class Node implements Runnable{
     public byte network;
     public byte name;
     private int port;
+
+    private boolean transmit = true;
 
     public Socket socket;
     public OutputStream writer;
@@ -61,7 +64,7 @@ public class Node implements Runnable{
             NetworkFrame message = config.getFrame();
             
             
-            while(true) {
+            while(transmit) {
                 //Exit transmitting mode once there are no more frames to transmit.
                 if (message == null)
                     break;
@@ -101,12 +104,19 @@ public class Node implements Runnable{
              * Move into the next stage, which is lsitening until the switch says to close.
              */
 
-            while(true) {
+            FrameLibrary.sendTermNodeFrame(name, network, writer);
+
+            while(transmit) {
                 /**
                  * Node lib helps unify the cycle process for interrpreting the messages since its virtually the same cycle that
                  * SendNetworkFrame object uses.
                  */
-                NodeLib.cycle(nodeOutput, name, writer, reader);
+
+                NetworkFrame frame = FrameLibrary.getNetworkFrame(reader);
+                if (frame.getDest() == 0 && frame.getMessage().equalsIgnoreCase("GLOBAL_TERM"))
+                    transmit = false;
+                else
+                    NodeLib.cycle(nodeOutput, name, writer, reader, frame);
             }
         } catch (IOException e) {
             e.printStackTrace();

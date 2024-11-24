@@ -1,4 +1,3 @@
 1_2: Message from node 2 to node 1.
 1_2: Message from node 2 to node 1.
 1_2: Message from node 2 to node 1.
-2_1: Cross network message from network 2 to network1.

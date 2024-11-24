@@ -8,7 +8,7 @@ public class Application {
 
     private static int[] networks = {25565, 2010, 2030, 10800};
 
-    private static int hubs = 2;
+    private static int hubs = 3;
     private static int nodes = 2;
 
     public static void main(String[] args) {

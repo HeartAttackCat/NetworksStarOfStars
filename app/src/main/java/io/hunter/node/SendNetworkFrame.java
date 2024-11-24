@@ -24,23 +24,11 @@ public class SendNetworkFrame implements Callable<Boolean>{
     public Boolean call() throws Exception {
         FrameLibrary.sendNetworkFrame(node.writer, message);
         while (!sent) {
-            sent = NodeLib.cycle(node.nodeOutput, node.name, node.writer, node.reader);
+            NetworkFrame frame = FrameLibrary.getNetworkFrame(node.reader);
+            sent = NodeLib.cycle(node.nodeOutput, node.name, node.writer, node.reader, frame);
         }
         return true;
 
-    }
-
-    public boolean cycle(NodeWriter output) throws IOException {
-        NetworkFrame frame = FrameLibrary.getNetworkFrame(node.reader);
-        if (frame.getDest() != node.name) {
-            return false;
-        }
-        if (isAckFrame(frame)) {
-            return true;
-        }
-        output.writeFrame(frame);
-        FrameLibrary.sendFrameAck(frame, node.writer);
-        return false;
     }
 
     public boolean isAckFrame(NetworkFrame frame) {

@@ -1,5 +1,7 @@
 2_2: Message from node 2 to node 1.
 2_2: Message from node 2 to node 1.
 2_2: Message from node 2 to node 1.
+Attempted to message network 1, node 1
+3_1: Cross network message to network 2 from network 3
 1_2: Cross network message from node 2 in network 1 to node 1 in network 2.
 1_1: Cross network message from node 1 in network 1 to node 1 in network 2.

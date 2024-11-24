@@ -23,6 +23,15 @@ public class NodeWriter {
         }
     }
 
+    public void writeBlocked(NetworkFrame frame) {
+        try {
+            writer.write("Attempted to message network " + frame.getNetworkSource() + ", node " + frame.getSrc() + "\n");
+            writer.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void writeFrame(NetworkFrame frame) {
         String line = 
         frame.getNetworkSource() + "_" +

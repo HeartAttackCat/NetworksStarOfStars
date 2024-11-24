@@ -11,8 +11,6 @@ import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import com.google.common.graph.Network;
-
 import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
 
@@ -22,7 +20,7 @@ public class SwitchNode implements Runnable {
 
     private byte network;
 
-    private int connected = 0, totalConnections, port = 25565;
+    private int connected = 0, totalConnections, finishedTransmitting = 0, port = 25565;
 
     private ArrayList<Socket> hosts = new ArrayList<>();
     private Queue<NetworkFrame> frameQueue = new LinkedList<>();
@@ -66,7 +64,7 @@ public class SwitchNode implements Runnable {
             available = hubSocket.getInputStream().available();
             if (available != 0) {
                 NetworkFrame message = FrameLibrary.getNetworkFrame(hubReader);
-                if (message.getNetworkDest() == network)
+                if (message.getNetworkDest() == network || message.getNetworkDest() == 0)
                 {
                     sendFrame(message);
                 }
@@ -113,9 +111,12 @@ public class SwitchNode implements Runnable {
     public void sendFrame(NetworkFrame frame) {
         if(frame == null)
             return;
+        if(termGlobal(frame))
+            return;
+        if(nodeTermFrame(frame))
+            return;
         if(frame.getNetworkDest() != network) {
             try {
-                frame.debugFrame("Hub "+network);
                 FrameLibrary.sendNetworkFrame(hubWriter, frame);
             }
             catch(IOException e) {
@@ -127,6 +128,43 @@ public class SwitchNode implements Runnable {
             return;
         
         flood(frame);
+    }
+
+    public boolean termGlobal(NetworkFrame frame) {
+        if(frame.getControl() != 1)
+            return false;
+        if(!frame.getMessage().equalsIgnoreCase("GLOBAL_TERM"))
+            return false;
+
+        System.out.println("[Hub "+network+"] got global terminating frame... Stopping transmission." );
+        
+        flood(frame);
+
+        transmit = false;
+        
+        return true;
+    }
+
+    public boolean nodeTermFrame(NetworkFrame frame) {
+        if(frame.getControl() != 1)
+            return false;
+        if(frame.getNetworkDest() != 0 || frame.getDest() != 0)
+            return false;
+        if(!frame.getMessage().equalsIgnoreCase("NODE_TERM"))
+            return false;
+        
+        finishedTransmitting++;
+        
+        if(finishedTransmitting == totalConnections) {
+            System.out.println("[Hub "+network+"] Finished transmission.");
+            try {
+                FrameLibrary.sendTermNetworkFrame(network, hubWriter);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println("[Hub "+network+"] Node "+frame.getSrc()+" done transmitting.");
+        return true;
     }
 
     public void flood(NetworkFrame frame) {
@@ -216,5 +254,7 @@ public class SwitchNode implements Runnable {
 
         }
 
+
+        System.out.println("Hub closing down...");
     }
 }
