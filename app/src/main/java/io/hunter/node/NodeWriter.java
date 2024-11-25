@@ -25,7 +25,7 @@ public class NodeWriter {
 
     public void writeBlocked(NetworkFrame frame) {
         try {
-            writer.write("Attempted to message network " + frame.getNetworkSource() + ", node " + frame.getSrc() + "\n");
+            writer.write("Attempted to message network " + frame.getNetworkSource() + ", node " + frame.getSrc() +" but was blocked by firewall.\n");
             writer.flush();
         } catch (IOException e) {
             e.printStackTrace();

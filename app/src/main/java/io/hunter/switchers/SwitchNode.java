@@ -16,8 +16,9 @@ import io.hunter.model.NetworkFrame;
 
 public class SwitchNode implements Runnable {
     
-    private boolean transmit = true;
+    private FirewallConfig firewall;
 
+    private boolean transmit = true;
     private byte network;
 
     private int connected = 0, totalConnections, finishedTransmitting = 0, port = 25565;
@@ -34,6 +35,13 @@ public class SwitchNode implements Runnable {
     private InputStream hubReader;
     private OutputStream hubWriter;
 
+    /**
+     * Constructor for the hub. It also initiates the hubs main thread.
+     * 
+     * @param totalConnections - total amount of nodes connected to the hub
+     * @param network - The name of the network the hub is controlling
+     * @param port - The port the hub uses to connect to the nodes.
+     */
     public SwitchNode(int totalConnections, byte network, int port) {
         /**
          * Setup the switch name.
@@ -47,7 +55,9 @@ public class SwitchNode implements Runnable {
          * Configure the network port.
          */
         this.port = port;
-
+        /**
+         * Main thread.
+         */
         Thread switchMain = new Thread(this);
         switchMain.start();
     }
@@ -57,7 +67,7 @@ public class SwitchNode implements Runnable {
      */
     public void switchMessages() {
         /**
-         * 
+         * Get messages from the main hub and distrobute them.
          */
         int available = 0;
         try {
@@ -66,14 +76,21 @@ public class SwitchNode implements Runnable {
                 NetworkFrame message = FrameLibrary.getNetworkFrame(hubReader);
                 if (message.getNetworkDest() == network || message.getNetworkDest() == 0)
                 {
-                    sendFrame(message);
+                    if(firewall.checkLocalPolicy(message, network))
+                    {
+                        sendFrame(FrameLibrary.sendBlockedFrameAck(message));
+                    } else {
+                        sendFrame(message);
+                    }
                 }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
         
-        
+        /**
+         * Get messages from nodes and distrubute them.
+         */
         for (Socket socket : hosts) {
             try {
                 available = socket.getInputStream().available();
@@ -88,11 +105,15 @@ public class SwitchNode implements Runnable {
             {
                 e.printStackTrace();
             }
-
-            
         }
     }
 
+    /**
+     * Add the route for the corresponding socket and byte.
+     * 
+     * @param socket The Network socket
+     * @param src The source byte
+     */
     public void addRoute(NetworkFrame frame, Socket socket) {
         byte src = frame.getSrc();
         if (routes.get(src) != null)
@@ -109,12 +130,18 @@ public class SwitchNode implements Runnable {
      * @param frame the frame we wish to send accross the network.
      */
     public void sendFrame(NetworkFrame frame) {
+        //Check too see if the frame is null
         if(frame == null)
             return;
+        //Check to see if its a global terminating frame.
         if(termGlobal(frame))
             return;
+        //Check to see if its a node terminating frame.
         if(nodeTermFrame(frame))
             return;
+        //Check the network destination, if it isn't for this network
+        //then dump the frame from the centeral hub if it isn't meant for
+        //this network.
         if(frame.getNetworkDest() != network) {
             try {
                 FrameLibrary.sendNetworkFrame(hubWriter, frame);
@@ -131,13 +158,16 @@ public class SwitchNode implements Runnable {
     }
 
     public boolean termGlobal(NetworkFrame frame) {
+        //check if its control frame.
         if(frame.getControl() != 1)
             return false;
+        //Check if the message is global term which means the centeral hub is done.
         if(!frame.getMessage().equalsIgnoreCase("GLOBAL_TERM"))
             return false;
 
         System.out.println("[Hub "+network+"] got global terminating frame... Stopping transmission." );
         
+        //Flood global termnating frame to children nodes to close out.
         flood(frame);
 
         transmit = false;
@@ -145,16 +175,28 @@ public class SwitchNode implements Runnable {
         return true;
     }
 
+    /**
+     * Check to see if frame is node terminating frame.
+     * If it is a node term frame then handle it.
+     * 
+     * @param frame The frame to check
+     * @return true if ter frame and false if not a term frame
+     */
     public boolean nodeTermFrame(NetworkFrame frame) {
+        //Check to see if its a control frame.
         if(frame.getControl() != 1)
             return false;
+        //Check network destination and destination.
         if(frame.getNetworkDest() != 0 || frame.getDest() != 0)
             return false;
+        //If message is node term then close out.
         if(!frame.getMessage().equalsIgnoreCase("NODE_TERM"))
             return false;
         
+        //Increment the numbers of finished nodes.
         finishedTransmitting++;
         
+        //If all nodes are finished let the centeral hub know.
         if(finishedTransmitting == totalConnections) {
             System.out.println("[Hub "+network+"] Finished transmission.");
             try {
@@ -167,6 +209,11 @@ public class SwitchNode implements Runnable {
         return true;
     }
 
+    /**
+     * Flood the network frame to all connected hosts besides the main hub.
+     * 
+     * @param frame The frame to be flooded
+     */
     public void flood(NetworkFrame frame) {
         for(Socket socket: hosts) {
             try {
@@ -211,11 +258,13 @@ public class SwitchNode implements Runnable {
      */
     public void getConnections () {
         try {
+            //Open port for the hub to operate on.
             ServerSocket server = new ServerSocket(port);
+
+            //Get the nodes before progressing into the next stages.
             while (connected != totalConnections) {
                 Socket socket = server.accept();
                 hosts.add(socket);
-
                 readers.put(socket, socket.getInputStream());
                 writers.put(socket, socket.getOutputStream());
 
@@ -230,13 +279,36 @@ public class SwitchNode implements Runnable {
             System.exit(-3);
         }
 
+        //Connect to the centeral hub.
         try {
+            //set the centeral hub socket.
             hubSocket = new Socket("localhost", 7777);
             
+            //Generate output and input streams for the application.
             hubReader = hubSocket.getInputStream();
             hubWriter = hubSocket.getOutputStream();
             
         } catch(IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void getPolicies() {
+        boolean listening = true;
+
+        try {
+            while(listening) {
+                NetworkFrame frame = FrameLibrary.getNetworkFrame(hubReader);
+                if (frame.getMessage().equalsIgnoreCase("END_FIREWALL")) {
+                    System.out.println("[Hub "+network+"] Recevied all firewall policies.");
+                    listening = false;
+                }
+                else {
+                    System.out.println("[Hub "+network+"] Recevied firewall policy.");
+                    firewall.parsePolicyFrame(frame, network);
+                }
+            }
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -248,13 +320,14 @@ public class SwitchNode implements Runnable {
          */
         getConnections();
         
-        //Transmission stage of the switch.
+        firewall = new FirewallConfig();
+
+        getPolicies();
+
+        //Check to see if hub should be transmitting and receiving messages.
         while(transmit) {
             switchMessages();
-
         }
-
-
-        System.out.println("Hub closing down...");
+        System.out.println("[Hub " + network + "] Hub closing down...");
     }
 }

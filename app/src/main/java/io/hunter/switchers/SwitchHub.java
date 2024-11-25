@@ -30,9 +30,15 @@ public class SwitchHub implements Runnable {
     private Dictionary<Socket, InputStream> readers;
     private Dictionary<Socket, OutputStream> writers;
 
+    //Boolean for tracking if the
     private boolean transmit = true;
 
-    //Start Hub of Hubs thread.
+    /**
+     * 
+     * 
+     * @param totalConnections How many hubs under it should connect.
+     * @param port The port of the main hub
+     */
     public SwitchHub(int totalConnections, int port) {
         this.totalConnections = totalConnections;
         this.port = port;
@@ -41,35 +47,43 @@ public class SwitchHub implements Runnable {
         thread.start();
     }
 
+    /**
+     * This function reads and handles network frames form the hubs.
+     */
     public void switchMessages() {
+        //Go through all the sockets.
         for (Socket host : hosts) {
+            //get the sockets reader and writer.
             InputStream reader = readers.get(host);
             OutputStream writer = writers.get(host);
-
+            
+            //Attempt to read the socket or send frames.
             try {
+                //See if the socket has any bytes wirtten on it.
                 int available = reader.available();
+                //Proceed to handle the socket if it has any information written on it.
                 if(reader.available() != 0)
+                {
+                    NetworkFrame message = FrameLibrary.getNetworkFrame(reader);
+                    addRoute(host, message.getNetworkSource());
+                    if(config.checkFirewallPolicy(message))
                     {
-                        NetworkFrame message;
-                        try {
-                            message = FrameLibrary.getNetworkFrame(reader);
-                            addRoute(host, message.getNetworkSource());
-                            if(config.checkFirewallPolicy(message))
-                            {
-                                sendMessage(FrameLibrary.sendBlockedFrameAck(message));
-                            } else {
-                                sendMessage(message);
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                        sendMessage(FrameLibrary.sendBlockedFrameAck(message));
+                    } else {
+                        sendMessage(message);
                     }
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
-
+    /**
+     * This function will decide how to send frames based off of the frame
+     * it receives.
+     * 
+     * @param message The network frame ot be transmitted by the hub.
+     */
     public void sendMessage(NetworkFrame message) {
         if(message == null)
             return;
@@ -81,9 +95,17 @@ public class SwitchHub implements Runnable {
         floodMessage(message);
     }
 
+    /**
+     * Check the network frame too see if it is a terminating message.
+     * Then handle the accoridng actions if it a terminating frame.
+     * 
+     * @param frame The network frame to be checked
+     * @return true if it is a terminating frame
+     */
     public boolean termNetworkMessage(NetworkFrame frame) {
         if(frame.getSrc() != 0 || frame.getDest() != 0 || frame.getNetworkDest() !=0)
             return false;
+        //Check too see if it is a Network terminating frame.
         if(!frame.getMessage().equalsIgnoreCase("NETWORK_TERM"))
             return false;
         
@@ -99,6 +121,12 @@ public class SwitchHub implements Runnable {
         return true;
     }
 
+    /**
+     * Add the route for the corresponding socket and byte.
+     * 
+     * @param socket The Network socket
+     * @param src The source byte
+     */
     public void addRoute(Socket socket, Byte src) {
         if (routes.get(src) != null)
             return;
@@ -120,6 +148,10 @@ public class SwitchHub implements Runnable {
         return true;
     }
 
+    /**
+     * 
+     * @param message
+     */
     public void floodMessage(NetworkFrame message) {
         for (Socket host : hosts) {
             try {
@@ -160,8 +192,25 @@ public class SwitchHub implements Runnable {
         routes = new Hashtable<>();
         writers = new Hashtable<>();
         readers = new Hashtable<>();
-        config = new FirewallConfig();
+        config = new FirewallConfig("policy");
         config.parseFirewallFile();
+    }
+
+    public void distrubutePolicies() {
+        ArrayList<NetworkFrame> policies = config.genPolicyFrame();
+        
+        try{
+            for (Socket socket : hosts){
+                if (policies != null) {
+                    for(NetworkFrame policy: policies) {
+                        FrameLibrary.sendNetworkFrame(writers.get(socket), policy);
+                    }
+                }
+                FrameLibrary.sendNetworkFrame(writers.get(socket), FrameLibrary.endOfFirewallFrame());
+            }
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -171,6 +220,8 @@ public class SwitchHub implements Runnable {
         //Get hub connections
         getConnections();
         
+        distrubutePolicies();
+
         //Begin switching frame loop.
         //TODO make sure to add terminating sequence.
         while(transmit) {

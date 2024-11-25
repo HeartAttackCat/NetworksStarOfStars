@@ -6,7 +6,7 @@ import java.io.OutputStream;
 import java.net.Socket;
 
 public class FrameLibrary {
-
+    
     public static NetworkFrame getNetworkFrame(InputStream reader) throws IOException {
         byte src = reader.readNBytes(1)[0];
         byte srcNetwork = reader.readNBytes(1)[0];
@@ -88,6 +88,18 @@ public class FrameLibrary {
             (byte) 0,
             (byte) 1,
             "GLOBAL_TERM"
+        );
+        return terminating;
+    }
+
+    public static NetworkFrame endOfFirewallFrame() {
+        NetworkFrame terminating = new NetworkFrame(
+            (byte) 0,
+            (byte) 0,
+            (byte) 0,
+            (byte) 0,
+            (byte) 1,
+            "END_FIREWALL"
         );
         return terminating;
     }
