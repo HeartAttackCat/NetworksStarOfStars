@@ -9,7 +9,9 @@ To build the project use
 `./gradlew build`
 
 To run the project
-`./gradlew run`
+`./gradlew run --args="--hub {number of hubs} --node {number of nodes}"`
+
+IMPORTANT: The node files and `firewall.txt` need to be located under the directory `files/`
 
 ## Purpose of Files
 ### Model package
