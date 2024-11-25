@@ -27,9 +27,10 @@ public class NetworkFrame {
     //The size of the message
     private byte size;
 
-    
+    //The raw bytes that are the message.
     private byte[] meat;
 
+    //Used to generate a frame with all the parameters but requires you to generate the crc.
     public NetworkFrame(byte src,byte networkSrc, byte dest, byte networkDest, byte control, byte crc, byte size, byte message[]) {
         this.src = src;
         this.networkSrc = networkSrc;
@@ -47,6 +48,7 @@ public class NetworkFrame {
 
     }
 
+    //Used to generate a new frame from theb eginning and generates the crc at creation and uses a byte.
     public NetworkFrame(byte src,byte networkSrc, byte dest, byte networkDest, byte control, byte size, byte message[]) {
         this.src = src;
         this.networkSrc = networkSrc;
@@ -64,24 +66,9 @@ public class NetworkFrame {
         this.crc = genCRC();
     }
 
+    //Generates the crc and converts the string message to a byte array.
     public NetworkFrame(byte src, byte networkSrc, byte dest, byte networkDest, byte control, String message) {
         this(src, networkSrc, dest, networkDest, control, (byte) message.length(), message.getBytes(StandardCharsets.US_ASCII));
-    }
-
-    public NetworkFrame(byte[] totalFrame) {
-        this.src = totalFrame[0];
-        this.networkSrc = totalFrame[1];
-        this.dest = totalFrame[2];
-        this.networkDest = totalFrame[3];
-        this.control = totalFrame[4];
-        this.crc = totalFrame[5];
-        this.size = totalFrame[6];
-        
-        meat = new byte[size];
-
-        for (int i = 0; i < size; i++) {
-            this.meat[i] = totalFrame[7+i];
-        }
     }
 
     public byte getSrc() {
@@ -112,10 +99,18 @@ public class NetworkFrame {
         return meat;
     }
 
+    /**
+     * Gives you the meat of the message as a string.
+     * @return the decoded string from the meat.
+     */
     public String getMessage() {
         return new String(meat, Charsets.US_ASCII);
     }
 
+    /**
+     * Generates the frame into one unfified byte array to be transmitted.
+     * @return The byte array of the entire message.
+     */
     public byte[] generateFrame() {
         byte[] totalFrame = new byte[7+size];
         totalFrame[0] = src;
@@ -133,6 +128,11 @@ public class NetworkFrame {
         return totalFrame;
     }
 
+    /**
+     * Generates the CRC
+     * 
+     * @return The CRC of the program.
+     */
     private byte genCRC() {
         byte sum = 0;
         for(int i = 0; i < size; i++) {
@@ -149,10 +149,18 @@ public class NetworkFrame {
         return sum;
     }
 
+    /**
+     * Corrupts the first byte in the message by setting it to n
+     */
     public void corruptData() {
         meat[0] = 'n';
     }
 
+    /**
+     * Checks the CRC of the frame
+     * 
+     * @return Will return false if message is corrupted, else it returns true.
+     */
     public boolean checkCRC() {
         byte calculated = genCRC();
         if (calculated != crc) {
@@ -161,6 +169,10 @@ public class NetworkFrame {
         return true;
     }
 
+    /**
+     * Prints frame to the console, used only for debugging the program.
+     * @param program A string in which can be usedto indentify which thread its being called form.
+     */
     public void debugFrame(String program) {
         System.out.println("["+program+"][Frame Debug] Source:" + src + ", Network Source:" + networkSrc + ", Destination:" + dest + ", Network Destination:" + networkDest + ", CRC:" + crc + ", Size:" + size + "\n\tMessage:" + getMessage());
     }

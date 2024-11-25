@@ -1,4 +1,0 @@
-1_2: Message from node 2 to node 1.
-1_2: Message from node 2 to node 1.
-1_2: Message from node 2 to node 1.
-Attempted to message network 3, node 1 but was blocked by firewall.

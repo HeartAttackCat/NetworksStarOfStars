@@ -84,8 +84,8 @@ public class Node implements Runnable{
                 Future<Boolean> future = executor.submit(task);
 
                 try {
-                    //Try to get the object in 10 seconds.
-                    future.get(10, TimeUnit.SECONDS);
+                    //Try to send the frame and get acklodgement in 5 seconds.
+                    future.get(5, TimeUnit.SECONDS);
                     //Get next frame ready if it was able to transmit sucsessfully.
                     message = config.getFrame();
                 } 

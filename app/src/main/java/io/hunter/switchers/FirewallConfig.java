@@ -19,17 +19,26 @@ public class FirewallConfig {
 
     private Dictionary<Byte, Byte> localPolicies;
 
+    /**
+     * Intiializes the firewall config and is used by the lower hubs and not main hub.
+     */
     public FirewallConfig() {
         localPolicies= new Hashtable<>();
     }
 
+    /**
+     * Intiializes the firewall config and is used by the main hub and not the lower hubs.
+     */
     public FirewallConfig(String document) {
-        fileName = "firewall/" + document + ".txt";
+        fileName = "files" + document + ".txt";
         firewallFile = new File(fileName);
         blockedNetworks = new ArrayList<>();
         blockedNodes = new ArrayList<>();
     }
 
+    /**
+     * Parses the firewall file if it exists.
+     */
     public void parseFirewallFile() {
         try {
             Scanner line = new Scanner(firewallFile);
@@ -74,6 +83,11 @@ public class FirewallConfig {
         return false;
     }
 
+    /**
+     * Generates frames from the main policy file
+     * 
+     * @return The array list of network frames that the main hub needs to send to the lower hubs.
+     */
     public ArrayList<NetworkFrame> genPolicyFrame() {
         if(blockedNodes.size() == 0)
             return null;
@@ -95,6 +109,11 @@ public class FirewallConfig {
         return policies;
     }
 
+    /**
+     * Takes policy frames the hub
+     * @param frame
+     * @param network
+     */
     public void parsePolicyFrame(NetworkFrame frame, byte network) {
         //Setup parsing of the incoming policy
         Scanner message = new Scanner(frame.getMessage());

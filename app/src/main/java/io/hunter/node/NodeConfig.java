@@ -19,17 +19,31 @@ public class NodeConfig {
 
     private Queue<NetworkFrame> frames = new LinkedList<NetworkFrame>();
 
+    /**
+     * Intializes the node config file.
+     * Needs the network and name.
+     * 
+     * @param name
+     * @param network
+     */
     public NodeConfig(byte name, byte network) {
         //TODO please update this before submission.
-        fileName = "arm" + network + "/Node" + name + ".txt";
+        fileName = "files/Node" + network + "_" + name + ".txt";
         this.network = network;
         this.name = name;
     }
 
+    /**
+     * Get the next frame for the node
+     * @return will return a frame if one is present or will return null if there is no more frames to send.
+     */
     public NetworkFrame getFrame() {
         return frames.poll();
     }
 
+    /**
+     * Parse the node config file and populates the frame queue.
+     */
     public void readFile() {
         configFile = new File(fileName);
         try { 

@@ -1,6 +1,0 @@
-1_1: Message from node 3 to node 1.
-1_1: Message from node 3 to node 1.
-1_1: Message from node 3 to node 1.
-1_2: Message from node 3 to node 2.
-1_2: Message from node 3 to node 2.
-1_2: Message from node 3 to node 2.

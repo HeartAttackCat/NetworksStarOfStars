@@ -100,7 +100,7 @@ public class SwitchNode implements Runnable {
                 available = socket.getInputStream().available();
                 if (available != 0)
                 {
-                    NetworkFrame frame = FrameLibrary.getNetworkFrame(socket);
+                    NetworkFrame frame = FrameLibrary.getNetworkFrame(readers.get(socket));
                     addRoute(frame, socket);
                     sendFrame(frame);
                 }
@@ -247,7 +247,7 @@ public class SwitchNode implements Runnable {
     public void flood(NetworkFrame frame) {
         for(Socket socket: hosts) {
             try {
-                FrameLibrary.sendNetworkFrame(socket, frame);
+                FrameLibrary.sendNetworkFrame(writers.get(socket), frame);
             } catch (IOException e) {
                 e.printStackTrace();
             }

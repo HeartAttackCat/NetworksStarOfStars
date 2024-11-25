@@ -12,8 +12,14 @@ public class NodeWriter {
     private String fileName;
     private FileWriter writer;
 
+    /**
+     * This initializes the node output file writer object.
+     * 
+     * @param network The network name of the node
+     * @param name The nodes name in the network
+     */
     public NodeWriter(byte network, byte name) {
-        fileName = "arm" + network + "/Node" + name + "Output.txt";
+        fileName = "files/Node" + network + "_" + name + "Output.txt";
         outputFile = new File(fileName);
 
         try {
@@ -23,6 +29,11 @@ public class NodeWriter {
         }
     }
 
+    /**
+     * Write a blocked frame
+     * 
+     * @param frame The frame that was blocked, will write an error.
+     */
     public void writeBlocked(NetworkFrame frame) {
         try {
             writer.write("Attempted to message network " + frame.getNetworkSource() + ", node " + frame.getSrc() +" but was blocked by firewall.\n");
@@ -32,6 +43,11 @@ public class NodeWriter {
         }
     }
 
+    /**
+     * Writes a frame into the output of the node.
+     * 
+     * @param frame The frame to be written.
+     */
     public void writeFrame(NetworkFrame frame) {
         String line = 
         frame.getNetworkSource() + "_" +

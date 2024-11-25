@@ -160,7 +160,7 @@ public class SwitchHub implements Runnable {
     public void floodMessage(NetworkFrame message) {
         for (Socket host : hosts) {
             try {
-                FrameLibrary.sendNetworkFrame(host, message);
+                FrameLibrary.sendNetworkFrame(writers.get(host), message);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -203,7 +203,7 @@ public class SwitchHub implements Runnable {
         routes = new Hashtable<>();
         writers = new Hashtable<>();
         readers = new Hashtable<>();
-        firewall = new FirewallConfig("policy");
+        firewall = new FirewallConfig("firewall");
         firewall.parseFirewallFile();
     }
 
