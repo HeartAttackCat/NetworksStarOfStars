@@ -8,8 +8,6 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.Hashtable;
-import java.util.LinkedList;
-import java.util.Queue;
 
 import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
@@ -23,14 +21,19 @@ public class SwitchNode implements Runnable {
 
     private int connected = 0, totalConnections, finishedTransmitting = 0, port = 25565;
 
-    private ArrayList<Socket> hosts = new ArrayList<>();
-    private Queue<NetworkFrame> frameQueue = new LinkedList<>();
+    //The sockets of all connected nodes.
+    private ArrayList<Socket> hosts;
 
-    private Dictionary<Socket, InputStream> readers = new Hashtable<Socket, InputStream>();
-    private Dictionary<Socket, OutputStream> writers = new Hashtable<Socket, OutputStream>();
+    //The readers and writers for the nodes.
+    private Dictionary<Socket, InputStream> readers;
+    private Dictionary<Socket, OutputStream> writers;
 
-    private Dictionary<Byte, Socket> routes = new Hashtable<Byte, Socket>();
+    //The routes of nodes
+    private Dictionary<Byte, Socket> routes;
 
+    /**
+     * The sock, read, and writr for the main hub.
+     */
     private Socket hubSocket;
     private InputStream hubReader;
     private OutputStream hubWriter;
@@ -97,9 +100,8 @@ public class SwitchNode implements Runnable {
                 if (available != 0)
                 {
                     NetworkFrame frame = FrameLibrary.getNetworkFrame(socket);
-                    frameQueue.add(frame);
                     addRoute(frame, socket);
-                    sendFrame(frameQueue.poll());
+                    sendFrame(frame);
                 }
             } catch (IOException e)
             {
@@ -272,7 +274,7 @@ public class SwitchNode implements Runnable {
             }
             server.close();
 
-            System.out.println("[Hub "+network+"] Switching to transmission.");
+            System.out.println("[Hub "+network+"] Finished getting connections from nodes.");
 
         } catch(IOException e) {
             System.out.println("[Hub " + network + "] Failed to start Switch");
@@ -293,17 +295,23 @@ public class SwitchNode implements Runnable {
         }
     }
 
+    /**
+     * This function will talk to the main hub and get policies from it.
+     */
     public void getPolicies() {
+        //Boolean for main loop, essentially should we keep listening for firewall policie messages.
         boolean listening = true;
 
         try {
             while(listening) {
                 NetworkFrame frame = FrameLibrary.getNetworkFrame(hubReader);
+                //Check too see if firewall is doen sending messages.
                 if (frame.getMessage().equalsIgnoreCase("END_FIREWALL")) {
                     System.out.println("[Hub "+network+"] Recevied all firewall policies.");
                     listening = false;
                 }
                 else {
+                    //If it is stil lsending messages kjust add the frame to the current policy.
                     System.out.println("[Hub "+network+"] Recevied firewall policy.");
                     firewall.parsePolicyFrame(frame, network);
                 }
@@ -313,15 +321,34 @@ public class SwitchNode implements Runnable {
         }
     }
 
+    /**
+     * Initializes global instance variables.
+     * Also initializes the firewall config.
+     */
+    public void init() {
+        hosts = new ArrayList<>();
+
+        readers = new Hashtable<Socket, InputStream>();
+        writers = new Hashtable<Socket, OutputStream>();
+
+        routes = new Hashtable<Byte, Socket>();
+
+        firewall = new FirewallConfig();
+    }
+
     @Override
     public void run() {
+        /**
+         * Initialize global instance variables.
+         */
+        init();
         /**
          * Get all incoming connections.
          */
         getConnections();
-        
-        firewall = new FirewallConfig();
-
+        /**
+         * Get firewall policies from the centeral hub.
+         */
         getPolicies();
 
         //Check to see if hub should be transmitting and receiving messages.

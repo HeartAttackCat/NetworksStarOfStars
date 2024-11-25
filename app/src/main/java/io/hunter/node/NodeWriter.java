@@ -41,7 +41,6 @@ public class NodeWriter {
             writer.write(line + "\n");
             writer.flush();
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }

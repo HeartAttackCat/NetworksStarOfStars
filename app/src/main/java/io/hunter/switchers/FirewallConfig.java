@@ -50,6 +50,9 @@ public class FirewallConfig {
                 } else {
                     blockedNodes.add(lineStr);
                 }
+                colon.close();
+                route.close();
+                line.close();
             }
         } catch(IOException e) {
             System.out.println("Error accessing firewall policy file.");
@@ -107,13 +110,24 @@ public class FirewallConfig {
         
         //Check if its meant for this node.
         if(network != policyNetwork)
+        {
+            message.close();
+            seperator.close();
             return;
+        }
         //Check too see if the policy has local on it.
         if(!message.next().equalsIgnoreCase("local"))
+        {
+            message.close();
+            seperator.close();
             return;
-        
+        }
+
         System.out.println("[Hub " + network + "] Added policy to enforce.");
         
+        message.close();
+        seperator.close();
+
         localPolicies.put(policyNode, (byte) 1);
      }
 

@@ -14,9 +14,9 @@ import io.hunter.model.NetworkFrame;
 
 public class SwitchHub implements Runnable {
 
-    private int totalConnections = 0, finishedTransmitting = 0, connected;
+    private int totalConnections = 0, finishedTransmitting = 0;
 
-    private FirewallConfig config;
+    private FirewallConfig firewall;
 
     private int port;
 
@@ -34,7 +34,7 @@ public class SwitchHub implements Runnable {
     private boolean transmit = true;
 
     /**
-     * 
+     * Intiializes the switch hub
      * 
      * @param totalConnections How many hubs under it should connect.
      * @param port The port of the main hub
@@ -55,18 +55,15 @@ public class SwitchHub implements Runnable {
         for (Socket host : hosts) {
             //get the sockets reader and writer.
             InputStream reader = readers.get(host);
-            OutputStream writer = writers.get(host);
             
             //Attempt to read the socket or send frames.
             try {
-                //See if the socket has any bytes wirtten on it.
-                int available = reader.available();
                 //Proceed to handle the socket if it has any information written on it.
                 if(reader.available() != 0)
                 {
                     NetworkFrame message = FrameLibrary.getNetworkFrame(reader);
                     addRoute(host, message.getNetworkSource());
-                    if(config.checkFirewallPolicy(message))
+                    if(firewall.checkFirewallPolicy(message))
                     {
                         sendMessage(FrameLibrary.sendBlockedFrameAck(message));
                     } else {
@@ -134,6 +131,13 @@ public class SwitchHub implements Runnable {
         routes.put(src, socket);
     }
 
+    /**
+     * Will attempt to send via a backwards leanred route.
+     * 
+     * @param message The message to be sent.
+     * @param dest The network destination byte to try route.
+     * @return true if it found a route and false if it didn't find a route.
+     */
     public boolean tryRoute(NetworkFrame message, byte dest) {
         Socket receiver = routes.get(dest);
 
@@ -149,8 +153,9 @@ public class SwitchHub implements Runnable {
     }
 
     /**
+     * Floods a message to all hosts.
      * 
-     * @param message
+     * @param message The message to be flooded
      */
     public void floodMessage(NetworkFrame message) {
         for (Socket host : hosts) {
@@ -162,6 +167,9 @@ public class SwitchHub implements Runnable {
         }
     }
 
+    /**
+     * Get connections for the hub of hubs.
+     */
     public void getConnections() {
         //Loop through until everything is connected.
 
@@ -187,20 +195,27 @@ public class SwitchHub implements Runnable {
         }
     }
 
+    /**
+     * Intiializes global instance variables.
+     */
     public void init() {
         hosts = new ArrayList<>();
         routes = new Hashtable<>();
         writers = new Hashtable<>();
         readers = new Hashtable<>();
-        config = new FirewallConfig("policy");
-        config.parseFirewallFile();
+        firewall = new FirewallConfig("policy");
+        firewall.parseFirewallFile();
     }
 
-    public void distrubutePolicies() {
-        ArrayList<NetworkFrame> policies = config.genPolicyFrame();
+    /**
+     * Flood the firewall frame messages to each node and then send terminating frame.
+     */
+    public void distrobutePolicies() {
+        ArrayList<NetworkFrame> policies = firewall.genPolicyFrame();
         
         try{
             for (Socket socket : hosts){
+                //Just to make sure there are policies to send.
                 if (policies != null) {
                     for(NetworkFrame policy: policies) {
                         FrameLibrary.sendNetworkFrame(writers.get(socket), policy);
@@ -219,11 +234,9 @@ public class SwitchHub implements Runnable {
         init();
         //Get hub connections
         getConnections();
-        
-        distrubutePolicies();
-
+        //Distorbute the policies
+        distrobutePolicies();
         //Begin switching frame loop.
-        //TODO make sure to add terminating sequence.
         while(transmit) {
             switchMessages();
         }
