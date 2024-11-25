@@ -27,7 +27,6 @@ public class NodeConfig {
      * @param network
      */
     public NodeConfig(byte name, byte network) {
-        //TODO please update this before submission.
         fileName = "files/Node" + network + "_" + name + ".txt";
         this.network = network;
         this.name = name;
