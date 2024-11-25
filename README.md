@@ -33,3 +33,11 @@ IMPORTANT: The node files and `firewall.txt` need to be located under the direct
 See checklist.pdf for the checklist.
 ## Frame Design
 [`Source byte`][`Network Source byte`][`Destination byte`][`Network Destination byte`][`control byte`][`CRC byte`][`size 1-255`][`meat_0 byte`]...[`meat_255 byte`]
+- Source byte is used for the node source.
+- Network Source byte was added to help route the frame to the correct network.
+- Destination byte is used for the node destination
+- Network Destination byte was added to help figure out which network the frame came from
+- Control was added to help figure out whichframe was a control frame/ack frame.
+- Crc byte is used to check data integrity of the message
+- size is used to help dynamically size the message/payload of the frame.
+- meat is how many characters from 1-256 characters max.
