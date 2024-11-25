@@ -8,6 +8,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.Random;
 
 import io.hunter.model.FrameLibrary;
 import io.hunter.model.NetworkFrame;
@@ -127,6 +128,27 @@ public class SwitchNode implements Runnable {
     }
 
     /**
+     * Has a 5 percent chance of corrupting the data.
+     * @param frame The frame that might get corrupted
+     */
+    public void dataCorrupt(NetworkFrame frame) {
+        if (frame.getControl() == 1)
+            return;
+        
+        Random rand = new Random(System.currentTimeMillis());
+
+        int catEatingEthernetCable = rand.nextInt(100);
+
+        if (catEatingEthernetCable >= 0 && catEatingEthernetCable < 5)
+        {
+            System.out.println("CORRUPTED A FRAME");
+            frame.debugFrame("[Hub "+network+"]");
+            frame.corruptData();
+            frame.debugFrame("[Hub "+network+"]");
+        }
+    }
+
+    /**
      * This function determines where and how frames should be sent once they are in the Queue.
      * 
      * @param frame the frame we wish to send accross the network.
@@ -135,6 +157,12 @@ public class SwitchNode implements Runnable {
         //Check too see if the frame is null
         if(frame == null)
             return;
+            /**
+             * Attempted to add data corruption however
+             * it wasn't working, it would keep resending the frame
+             * but never got the acknowledgement.
+             */
+        //dataCorrupt(frame);
         //Check to see if its a global terminating frame.
         if(termGlobal(frame))
             return;

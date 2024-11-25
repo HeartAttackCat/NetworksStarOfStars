@@ -12,6 +12,8 @@ public class NodeLib {
     public static boolean cycle(NodeWriter output, byte name, OutputStream writer, InputStream reader, NetworkFrame frame) throws IOException {
         if (frame.getDest() != name && frame.getDest() != 0)
             return false;
+        if (!frame.checkCRC())
+            return false;
         if (isAckFrame(frame))
             return true;
         if(isBlockAck(frame, output))

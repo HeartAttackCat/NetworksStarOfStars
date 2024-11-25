@@ -50,9 +50,7 @@ public class FirewallConfig {
                 } else {
                     blockedNodes.add(lineStr);
                 }
-                colon.close();
-                route.close();
-                line.close();
+                
             }
         } catch(IOException e) {
             System.out.println("Error accessing firewall policy file.");

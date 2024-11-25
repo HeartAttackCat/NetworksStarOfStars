@@ -6,20 +6,28 @@ import com.google.common.base.Charsets;
 
 public class NetworkFrame {
 
+    //The source of the message
     private byte src;
 
+    //The network Source of the message
     private byte networkSrc;
 
+    //The destination of the message
     private byte dest;
 
+    //The network destination of the message
     private byte networkDest;
 
+    //If the message is a control message
     private byte control;
 
+    //The CRC of the message
     private byte crc;
 
+    //The size of the message
     private byte size;
 
+    
     private byte[] meat;
 
     public NetworkFrame(byte src,byte networkSrc, byte dest, byte networkDest, byte control, byte crc, byte size, byte message[]) {
@@ -139,6 +147,10 @@ public class NetworkFrame {
         sum += size;
 
         return sum;
+    }
+
+    public void corruptData() {
+        meat[0] = 'n';
     }
 
     public boolean checkCRC() {

@@ -1,4 +1,3 @@
 3_2: Message from node 2 to node 1.
 3_2: Message from node 2 to node 1.
 3_2: Message from node 2 to node 1.
-Attempted to message network 1, node 1 but was blocked by firewall.

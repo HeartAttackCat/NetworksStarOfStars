@@ -1,5 +1,6 @@
 3_1: Message from node 1 to node 2.
-3_1: Message from node 1 to node 2.
-3_1: Message from node 1 to node 2.
 Attempted to message network 1, node 1 but was blocked by firewall.
 1_1: Cross network message from network 1 to network 3.
+3_1: Message from node 1 to node 2.
+3_1: Message from node 1 to node 2.
+3_1: Message from node 1 to node 2.

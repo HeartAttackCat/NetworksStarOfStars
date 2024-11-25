@@ -29,6 +29,12 @@ public class Node implements Runnable{
     public OutputStream writer;
     public InputStream reader;
 
+    /**
+     * Initialize the node
+     * @param network The network byte it is part of
+     * @param name - the name of the node
+     * @param port - The port of the switch hub
+     */
     public Node(byte network, byte name, int port) {
         this.network = network;
         this.name = name;
