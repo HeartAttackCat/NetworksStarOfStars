@@ -31,3 +31,5 @@ IMPORTANT: The node files and `firewall.txt` need to be located under the direct
 - Application.java - Resposnible for handling command line arguments and starting all the switch and node threads.
 ## Checklist
 See checklist.pdf for the checklist.
+## Frame Design
+[`Source byte`][`Network Source byte`][`Destination byte`][`Network Destination byte`][`control byte`][`CRC byte`][`size 1-255`][`meat_0 byte`]...[`meat_255 byte`]
